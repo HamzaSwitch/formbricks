@@ -23,6 +23,8 @@ import { parseRecallInfo } from "@/lib/utils/recall";
 import { truncateText } from "@/lib/utils/strings";
 import { resolveStorageUrlAuto } from "@/modules/storage/utils";
 
+type TPipelineIntegrationSurvey = Pick<TSurvey, "blocks" | "hiddenFields" | "variables" | "name">;
+
 const convertMetaObjectToString = (metadata: TResponseMeta): string => {
   let result: string[] = [];
   if (metadata.source) result.push(`Source: ${metadata.source}`);
@@ -41,7 +43,7 @@ const convertMetaObjectToString = (metadata: TResponseMeta): string => {
 const processDataForIntegration = async (
   integrationType: TIntegrationType,
   data: TPipelineInput,
-  survey: TSurvey,
+  survey: TPipelineIntegrationSurvey,
   includeVariables: boolean,
   includeMetadata: boolean,
   includeHiddenFields: boolean,
@@ -85,7 +87,7 @@ const processDataForIntegration = async (
 export const handleIntegrations = async (
   integrations: TIntegration[],
   data: TPipelineInput,
-  survey: TSurvey
+  survey: TPipelineIntegrationSurvey
 ) => {
   for (const integration of integrations) {
     switch (integration.type) {
@@ -128,7 +130,7 @@ export const handleIntegrations = async (
 const handleAirtableIntegration = async (
   integration: TIntegrationAirtable,
   data: TPipelineInput,
-  survey: TSurvey
+  survey: TPipelineIntegrationSurvey
 ): Promise<Result<void, Error>> => {
   try {
     if (integration.config.data.length > 0) {
@@ -164,7 +166,7 @@ const handleAirtableIntegration = async (
 const handleGoogleSheetsIntegration = async (
   integration: TIntegrationGoogleSheets,
   data: TPipelineInput,
-  survey: TSurvey
+  survey: TPipelineIntegrationSurvey
 ): Promise<Result<void, Error>> => {
   try {
     if (integration.config.data.length > 0) {
@@ -205,7 +207,7 @@ const handleGoogleSheetsIntegration = async (
 const handleSlackIntegration = async (
   integration: TIntegrationSlack,
   data: TPipelineInput,
-  survey: TSurvey
+  survey: TPipelineIntegrationSurvey
 ): Promise<Result<void, Error>> => {
   try {
     if (integration.config.data.length > 0) {
@@ -285,7 +287,7 @@ const extractResponses = async (
   integrationType: TIntegrationType,
   pipelineData: TPipelineInput,
   elementIds: string[],
-  survey: TSurvey
+  survey: TPipelineIntegrationSurvey
 ): Promise<{
   responses: string[];
   elements: string[];
@@ -330,7 +332,7 @@ const extractResponses = async (
 const handleNotionIntegration = async (
   integration: TIntegrationNotion,
   data: TPipelineInput,
-  surveyData: TSurvey
+  surveyData: TPipelineIntegrationSurvey
 ): Promise<Result<void, Error>> => {
   try {
     if (integration.config.data.length > 0) {
@@ -357,7 +359,7 @@ const handleNotionIntegration = async (
 const buildNotionPayloadProperties = (
   mapping: TIntegrationNotionConfigData["mapping"],
   data: TPipelineInput,
-  surveyData: TSurvey
+  surveyData: TPipelineIntegrationSurvey
 ) => {
   const properties: any = {};
   const responses = data.response.data;
