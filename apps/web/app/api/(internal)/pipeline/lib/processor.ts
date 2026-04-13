@@ -5,6 +5,7 @@ import { logger } from "@formbricks/logger";
 import { DatabaseError, ResourceNotFoundError } from "@formbricks/types/errors";
 import { sendTelemetryEvents } from "@/app/api/(internal)/pipeline/lib/telemetry";
 import { TPipelineInput, TPipelineJob } from "@/app/lib/types/pipelines";
+import { POSTHOG_KEY } from "@/lib/constants";
 import { generateStandardWebhookSignature } from "@/lib/crypto";
 import { getIntegrations } from "@/lib/integration/service";
 import { validateWebhookUrl } from "@/lib/utils/validate-webhook-url";
@@ -16,6 +17,7 @@ import { resolveStorageUrlsInObject } from "@/modules/storage/utils";
 import { sendFollowUpsForResponse } from "@/modules/survey/follow-ups/lib/follow-ups";
 import { FollowUpSendError } from "@/modules/survey/follow-ups/types/follow-up";
 import { handleIntegrations } from "./handleIntegrations";
+import { captureSurveyResponsePostHogEvent } from "./posthog";
 
 const pipelineOrganizationSelect = {
   id: true,
@@ -408,6 +410,18 @@ export const processPipelineJob = async (job: TPipelineInput | TPipelineJob): Pr
         });
       } catch (error) {
         logger.error({ error, responseId: response.id }, "Failed to record response meter event");
+      }
+
+      if (POSTHOG_KEY) {
+        const responseCount = await getResponseCountForPipeline(surveyId);
+
+        captureSurveyResponsePostHogEvent({
+          organizationId: organization.id,
+          surveyId,
+          surveyType: survey.type,
+          environmentId,
+          responseCount,
+        });
       }
 
       await sendTelemetryEvents().catch((error) => {

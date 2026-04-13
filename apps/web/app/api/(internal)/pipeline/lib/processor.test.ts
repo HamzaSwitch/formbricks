@@ -12,6 +12,7 @@ import { recordResponseCreatedMeterEvent } from "@/modules/ee/billing/lib/meteri
 import { sendResponseFinishedEmail } from "@/modules/email";
 import { sendFollowUpsForResponse } from "@/modules/survey/follow-ups/lib/follow-ups";
 import { handleIntegrations } from "./handleIntegrations";
+import { captureSurveyResponsePostHogEvent } from "./posthog";
 import { isPipelinePoolExhaustionError, processPipelineJob } from "./processor";
 import { sendTelemetryEvents } from "./telemetry";
 
@@ -52,6 +53,15 @@ vi.mock("@/modules/ee/billing/lib/metering", () => ({
   recordResponseCreatedMeterEvent: vi.fn(),
 }));
 
+vi.mock("@/lib/constants", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/constants")>();
+
+  return {
+    ...actual,
+    POSTHOG_KEY: "posthog_test_key",
+  };
+});
+
 vi.mock("@/modules/email", () => ({
   sendResponseFinishedEmail: vi.fn(),
 }));
@@ -62,6 +72,10 @@ vi.mock("@/modules/survey/follow-ups/lib/follow-ups", () => ({
 
 vi.mock("./handleIntegrations", () => ({
   handleIntegrations: vi.fn(),
+}));
+
+vi.mock("./posthog", () => ({
+  captureSurveyResponsePostHogEvent: vi.fn(),
 }));
 
 vi.mock("./telemetry", () => ({
@@ -181,8 +195,19 @@ describe("processPipelineJob", () => {
         responseId: baseJob.response.id,
       })
     );
+    expect(prisma.response.count).toHaveBeenCalledWith({
+      where: {
+        surveyId: baseJob.surveyId,
+      },
+    });
+    expect(captureSurveyResponsePostHogEvent).toHaveBeenCalledWith({
+      organizationId: "org_1",
+      surveyId: baseJob.surveyId,
+      surveyType: survey.type,
+      environmentId: baseJob.environmentId,
+      responseCount: 2,
+    });
     expect(sendTelemetryEvents).toHaveBeenCalledTimes(1);
-    expect(prisma.response.count).not.toHaveBeenCalled();
   });
 
   test("processes responseFinished jobs with integrations, notifications, and auto-complete", async () => {
